@@ -28,7 +28,10 @@ class ApplicationCreate(BaseModel):
     notes: str = Field(min_length=1)
 
 @app.get("/applications")
-def get_applications(status:str = None, db: Session = Depends(get_db)):
+def get_applications(
+    status: Literal["Applied", "Interview", "Rejected", "Selected"] = None,
+    db: Session = Depends(get_db)
+):
    
 
     query = db.query(ApplicationModel)
