@@ -13,12 +13,14 @@ class ApplicationCreate(BaseModel):
     status: str
 
 
-@app.get("/")
-def home():
+@app.get("/applications/{application_id}")
+def get_application(application_id: int):
     db: Session = SessionLocal()
-    applications = db.query(ApplicationModel).all()
+    application = db.query(ApplicationModel).filter(
+        ApplicationModel.id == application_id
+    ).first()
     db.close()
-    return applications
+    return application
 
 
 @app.post("/applications")
