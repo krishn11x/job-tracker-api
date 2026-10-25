@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel,HttpUrl, Field
 from database import engine, Base, SessionLocal
 from models import Application as ApplicationModel
 from sqlalchemy.orm import Session
@@ -20,12 +20,12 @@ def get_db():
 
 Base.metadata.create_all(bind=engine)
 class ApplicationCreate(BaseModel):
-    company: str
-    role: str
+    company: str = Field(min_length=1)
+    role: str = Field(min_length=1)
     status: Literal["Applied", "Interview", "Rejected", "Selected"]
-    application_date: str
-    job_link: str
-    notes: str
+    application_date: str = Field(min_length=1)
+    job_link: HttpUrl
+    notes: str = Field(min_length=1)
 
 @app.get("/applications")
 def get_applications(status:str = None, db: Session = Depends(get_db)):
@@ -41,19 +41,23 @@ def get_applications(status:str = None, db: Session = Depends(get_db)):
     return applications
 
 @app.get("/applications/{application_id}")
-def get_application(application_id: int):
-    db: Session = SessionLocal()
+@app.get("/applications/{application_id}")
+def get_application(
+    application_id: int,
+    db: Session = Depends(get_db)
+):
     application = db.query(ApplicationModel).filter(
         ApplicationModel.id == application_id
     ).first()
+
     if application is None:
-        db.close()
         raise HTTPException(
             status_code=404,
             detail="Application not found"
         )
 
     return application
+
 
 
 @app.post("/applications")
@@ -64,7 +68,7 @@ def create_application(application: ApplicationCreate, db: Session = Depends(get
     role=application.role,
     status=application.status,
     application_date=application.application_date,
-    job_link=application.job_link,
+    job_link=str(application.job_link),
     notes=application.notes
 )
     db.add(new_application)
@@ -94,7 +98,7 @@ def update_application(application_id: int, application: ApplicationCreate, db: 
     existing_application.role = application.role
     existing_application.status = application.status
     existing_application.application_date = application.application_date
-    existing_application.job_link = application.job_link
+    existing_application.job_link = str(application.job_link)
     existing_application.notes = application.notes
 
     db.commit()
