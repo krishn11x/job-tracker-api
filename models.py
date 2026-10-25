@@ -8,3 +8,6 @@ class Application(Base):
     company = Column(String)
     role = Column(String)
     status = Column(String)
+    application_date = Column(String)
+    job_link = Column(String)
+    notes = Column(String)
