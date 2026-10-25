@@ -1,8 +1,55 @@
+import pytest
 
 from fastapi.testclient import TestClient
-from main import app
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from main import app, get_db
+from database import Base
+from models import Application as ApplicationModel
+
+
+# Separate in-memory database for tests
+TEST_DATABASE_URL = "sqlite://"
+
+test_engine = create_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
+
+TestingSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=test_engine
+)
+
+Base.metadata.create_all(bind=test_engine)
+
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def clean_database():
+    db = TestingSessionLocal()
+
+    db.query(ApplicationModel).delete()
+    db.commit()
+    db.close()
+
+    yield
 
 
 def test_home():
@@ -101,6 +148,7 @@ def test_delete_application():
     )
 
     assert response.status_code == 200
+
 
 def test_invalid_application():
     response = client.post(
